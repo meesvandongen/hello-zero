@@ -4,36 +4,35 @@ CREATE DATABASE zstart_cdb;
 
 \c zstart;
 
-CREATE TABLE "user" (
-  "id" VARCHAR PRIMARY KEY,
-  "name" VARCHAR NOT NULL,
-  "partner" BOOLEAN NOT NULL
+CREATE TABLE "app_user" (
+  "id" VARCHAR PRIMARY KEY
 );
 
-CREATE TABLE "medium" (
+CREATE TABLE "organization" (
   "id" VARCHAR PRIMARY KEY,
-  "name" VARCHAR NOT NULL
+  "parent_id" VARCHAR,
+  FOREIGN KEY ("parent_id") REFERENCES "organization"("id")
 );
 
-CREATE TABLE "message" (
-  "id" VARCHAR PRIMARY KEY,
-  "sender_id" VARCHAR REFERENCES "user"(id),
-  "medium_id" VARCHAR REFERENCES "medium"(id),
-  "body" VARCHAR NOT NULL,
-  "timestamp" TIMESTAMP not null
+CREATE TABLE "user_organization" (
+  "user_id" VARCHAR,
+  "organization_id" VARCHAR,
+  PRIMARY KEY ("user_id", "organization_id")
 );
 
-INSERT INTO "user" (id, name, partner) VALUES ('ycD76wW4R2', 'Aaron', true);
-INSERT INTO "user" (id, name, partner) VALUES ('IoQSaxeVO5', 'Matt', true);
-INSERT INTO "user" (id, name, partner) VALUES ('WndZWmGkO4', 'Cesar', true);
-INSERT INTO "user" (id, name, partner) VALUES ('ENzoNm7g4E', 'Erik', true);
-INSERT INTO "user" (id, name, partner) VALUES ('dLKecN3ntd', 'Greg', true);
-INSERT INTO "user" (id, name, partner) VALUES ('enVvyDlBul', 'Darick', true);
-INSERT INTO "user" (id, name, partner) VALUES ('9ogaDuDNFx', 'Alex', true);
-INSERT INTO "user" (id, name, partner) VALUES ('6z7dkeVLNm', 'Dax', false);
-INSERT INTO "user" (id, name, partner) VALUES ('7VoEoJWEwn', 'Nate', false);
+ALTER TABLE "user_organization"
+ADD CONSTRAINT fk_user
+FOREIGN KEY ("user_id") REFERENCES "app_user"("id");
 
-INSERT INTO "medium" (id, name) VALUES ('G14bSFuNDq', 'Discord');
-INSERT INTO "medium" (id, name) VALUES ('b7rqt_8w_H', 'Twitter DM');
-INSERT INTO "medium" (id, name) VALUES ('0HzSMcee_H', 'Tweet reply to unrelated thread');
-INSERT INTO "medium" (id, name) VALUES ('ttx7NCmyac', 'SMS');
+ALTER TABLE "user_organization"
+ADD CONSTRAINT fk_organization
+FOREIGN KEY ("organization_id") REFERENCES "organization"("id");
+
+INSERT INTO "app_user" (id) VALUES ('1');
+INSERT INTO "app_user" (id) VALUES ('2');
+
+INSERT INTO "organization" (id) VALUES ('org1');
+INSERT INTO "organization" (id, parent_id) VALUES ('org2', 'org1');
+
+INSERT INTO "user_organization" (user_id, organization_id) VALUES ('1', 'org1');
+INSERT INTO "user_organization" (user_id, organization_id) VALUES ('2', 'org1');

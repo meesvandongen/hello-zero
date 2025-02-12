@@ -6,113 +6,179 @@
 // for more complex examples, including many-to-many.
 
 import {
-  createSchema,
-  definePermissions,
-  ExpressionBuilder,
-  Row,
-  NOBODY_CAN,
-  ANYONE_CAN,
-  table,
-  string,
-  boolean,
-  number,
-  relationships,
+	type ExpressionBuilder,
+	type Row,
+	createSchema,
+	definePermissions,
+	relationships,
+	string,
+	table,
 } from "@rocicorp/zero";
 
-const message = table("message")
-  .columns({
-    id: string(),
-    senderID: string().from("sender_id"),
-    mediumID: string().from("medium_id"),
-    body: string(),
-    timestamp: number(),
-  })
-  .primaryKey("id");
+const organization = table("organization")
+	.columns({
+		id: string(),
+		parent_id: string(),
+	})
+	.primaryKey("id");
 
-const user = table("user")
-  .columns({
-    id: string(),
-    name: string(),
-    partner: boolean(),
-  })
-  .primaryKey("id");
+const appUser = table("app_user")
+	.columns({
+		id: string(),
+	})
+	.primaryKey("id");
 
-const medium = table("medium")
-  .columns({
-    id: string(),
-    name: string(),
-  })
-  .primaryKey("id");
+const userOrganization = table("user_organization")
+	.columns({
+		user_id: string(),
+		organization_id: string(),
+	})
+	.primaryKey("user_id", "organization_id");
 
-const messageRelationships = relationships(message, ({ one }) => ({
-  sender: one({
-    sourceField: ["senderID"],
-    destField: ["id"],
-    destSchema: user,
-  }),
-  medium: one({
-    sourceField: ["mediumID"],
-    destField: ["id"],
-    destSchema: medium,
-  }),
+const userRelationships = relationships(appUser, ({ many }) => ({
+	organizations: many(
+		{
+			destField: ["user_id"],
+			destSchema: userOrganization,
+			sourceField: ["id"],
+		},
+		{
+			destField: ["id"],
+			destSchema: organization,
+			sourceField: ["organization_id"],
+		},
+	),
+	user_organizations: many({
+		destField: ["user_id"],
+		destSchema: userOrganization,
+		sourceField: ["id"],
+	}),
 }));
 
+const organizationRelationships = relationships(
+	organization,
+	({ many, one }) => ({
+		users: many(
+			{
+				destField: ["organization_id"],
+				destSchema: userOrganization,
+				sourceField: ["id"],
+			},
+			{
+				destField: ["id"],
+				destSchema: appUser,
+				sourceField: ["user_id"],
+			},
+		),
+		organization_users: many({
+			destField: ["organization_id"],
+			destSchema: userOrganization,
+			sourceField: ["id"],
+		}),
+		parent: one({
+			destField: ["id"],
+			destSchema: organization,
+			sourceField: ["parent_id"],
+		}),
+		children: many({
+			destField: ["parent_id"],
+			destSchema: organization,
+			sourceField: ["id"],
+		}),
+	}),
+);
+
+const userOrganizationRelationships = relationships(
+	userOrganization,
+	({ one }) => ({
+		user: one({
+			destField: ["id"],
+			destSchema: appUser,
+			sourceField: ["user_id"],
+		}),
+		organization: one({
+			destField: ["id"],
+			destSchema: organization,
+			sourceField: ["organization_id"],
+		}),
+	}),
+);
+
 export const schema = createSchema(1, {
-  tables: [user, medium, message],
-  relationships: [messageRelationships],
+	tables: [appUser, organization, userOrganization],
+	relationships: [
+		userRelationships,
+		organizationRelationships,
+		userOrganizationRelationships,
+	],
 });
 
 export type Schema = typeof schema;
-export type Message = Row<typeof schema.tables.message>;
-export type Medium = Row<typeof schema.tables.medium>;
-export type User = Row<typeof schema.tables.user>;
+export type User = Row<typeof schema.tables.app_user>;
+export type Organization = Row<typeof schema.tables.organization>;
 
 // The contents of your decoded JWT.
 type AuthData = {
-  sub: string | null;
+	sub: string;
 };
 
 export const permissions = definePermissions<AuthData, Schema>(schema, () => {
-  const allowIfLoggedIn = (
-    authData: AuthData,
-    { cmpLit }: ExpressionBuilder<Schema, keyof Schema["tables"]>
-  ) => cmpLit(authData.sub, "IS NOT", null);
+	const canReadOrganization = (
+		authData: AuthData,
+		eb: ExpressionBuilder<Schema, "organization">,
+	) =>
+		eb.or(
+			eb.exists("users", (uq) => uq.where("id", authData.sub)),
+			eb.exists("parent", (pq) =>
+				pq.whereExists("users", (uq) => uq.where("id", authData.sub)),
+			),
+		);
 
-  const allowIfMessageSender = (
-    authData: AuthData,
-    { cmp }: ExpressionBuilder<Schema, "message">
-  ) => cmp("senderID", "=", authData.sub ?? "");
+	const canReadUser = (
+		authData: AuthData,
+		eb: ExpressionBuilder<Schema, "app_user">,
+	) =>
+		eb.exists("organizations", (oq) =>
+			oq.where((eb) =>
+				eb.or(
+					eb.exists("users", (uq) => uq.where("id", authData.sub)),
+					eb.exists("parent", (pq) =>
+						pq.whereExists("users", (uq) => uq.where("id", authData.sub)),
+					),
+				),
+			),
+		);
 
-  return {
-    medium: {
-      row: {
-        insert: NOBODY_CAN,
-        update: {
-          preMutation: NOBODY_CAN,
-        },
-        delete: NOBODY_CAN,
-      },
-    },
-    user: {
-      row: {
-        insert: NOBODY_CAN,
-        update: {
-          preMutation: NOBODY_CAN,
-        },
-        delete: NOBODY_CAN,
-      },
-    },
-    message: {
-      row: {
-        // anyone can insert
-        insert: ANYONE_CAN,
-        // only sender can edit their own messages
-        update: {
-          preMutation: [allowIfMessageSender],
-        },
-        // must be logged in to delete
-        delete: [allowIfLoggedIn],
-      },
-    },
-  };
+	const canReadUserOrganization = (
+		authData: AuthData,
+		eb: ExpressionBuilder<Schema, "user_organization">,
+	) =>
+		eb.exists("organization", (oq) =>
+			oq.where((eb) =>
+				eb.or(
+					eb.exists("users", (uq) => uq.where("id", authData.sub)),
+					eb.exists("parent", (pq) =>
+						pq.whereExists("users", (uq) => uq.where("id", authData.sub)),
+					),
+				),
+			),
+		);
+
+	return {
+		organization: {
+			row: {
+				select: [canReadOrganization],
+			},
+		},
+		app_user: {
+			row: {
+				select: [canReadUser],
+			},
+		},
+		user_organization: {
+			row: {
+				select: [canReadUserOrganization],
+			},
+		},
+	};
 });
