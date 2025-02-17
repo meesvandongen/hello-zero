@@ -19,12 +19,24 @@ const organization = table("organization")
 	.columns({
 		id: string(),
 		parent_id: string(),
+		a: string(),
+		b: string(),
+		c: string(),
+		d: string(),
+		e: string(),
+		f: string(),
 	})
 	.primaryKey("id");
 
 const appUser = table("app_user")
 	.columns({
 		id: string(),
+		a: string(),
+		b: string(),
+		c: string(),
+		d: string(),
+		e: string(),
+		f: string(),
 	})
 	.primaryKey("id");
 
@@ -52,6 +64,36 @@ const userRelationships = relationships(appUser, ({ many }) => ({
 		destField: ["user_id"],
 		destSchema: userOrganization,
 		sourceField: ["id"],
+	}),
+	a_organizations: many({
+		destField: ["a"],
+		destSchema: organization,
+		sourceField: ["a"],
+	}),
+	b_organizations: many({
+		destField: ["b"],
+		destSchema: organization,
+		sourceField: ["b"],
+	}),
+	c_organizations: many({
+		destField: ["c"],
+		destSchema: organization,
+		sourceField: ["c"],
+	}),
+	d_organizations: many({
+		destField: ["d"],
+		destSchema: organization,
+		sourceField: ["d"],
+	}),
+	e_organizations: many({
+		destField: ["e"],
+		destSchema: organization,
+		sourceField: ["e"],
+	}),
+	f_organizations: many({
+		destField: ["f"],
+		destSchema: organization,
+		sourceField: ["f"],
 	}),
 }));
 
@@ -84,6 +126,36 @@ const organizationRelationships = relationships(
 			destField: ["parent_id"],
 			destSchema: organization,
 			sourceField: ["id"],
+		}),
+		a_users: many({
+			destField: ["a"],
+			destSchema: appUser,
+			sourceField: ["a"],
+		}),
+		b_users: many({
+			destField: ["b"],
+			destSchema: appUser,
+			sourceField: ["b"],
+		}),
+		c_users: many({
+			destField: ["c"],
+			destSchema: appUser,
+			sourceField: ["c"],
+		}),
+		d_users: many({
+			destField: ["d"],
+			destSchema: appUser,
+			sourceField: ["d"],
+		}),
+		e_users: many({
+			destField: ["e"],
+			destSchema: appUser,
+			sourceField: ["e"],
+		}),
+		f_users: many({
+			destField: ["f"],
+			destSchema: appUser,
+			sourceField: ["f"],
 		}),
 	}),
 );
@@ -128,9 +200,35 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 		eb: ExpressionBuilder<Schema, "organization">,
 	) =>
 		eb.or(
-			eb.exists("users", (uq) => uq.where("id", authData.sub)),
+			eb.exists("a_users", (uq) => uq.where("id", authData.sub)),
+			eb.exists("b_users", (uq) => uq.where("id", authData.sub)),
+			eb.exists("c_users", (uq) => uq.where("id", authData.sub)),
+			eb.exists("d_users", (uq) => uq.where("id", authData.sub)),
+			eb.exists("e_users", (uq) => uq.where("id", authData.sub)),
+			eb.exists("f_users", (uq) => uq.where("id", authData.sub)),
 			eb.exists("parent", (pq) =>
-				pq.whereExists("users", (uq) => uq.where("id", authData.sub)),
+				pq.where((eb) =>
+					eb.or(
+						eb.exists("a_users", (uq) => uq.where("id", authData.sub)),
+						eb.exists("b_users", (uq) => uq.where("id", authData.sub)),
+						eb.exists("c_users", (uq) => uq.where("id", authData.sub)),
+						eb.exists("d_users", (uq) => uq.where("id", authData.sub)),
+						eb.exists("e_users", (uq) => uq.where("id", authData.sub)),
+						eb.exists("f_users", (uq) => uq.where("id", authData.sub)),
+						eb.exists("parent", (pq) =>
+							pq.where((eb) =>
+								eb.or(
+									eb.exists("a_users", (uq) => uq.where("id", authData.sub)),
+									eb.exists("b_users", (uq) => uq.where("id", authData.sub)),
+									eb.exists("c_users", (uq) => uq.where("id", authData.sub)),
+									eb.exists("d_users", (uq) => uq.where("id", authData.sub)),
+									eb.exists("e_users", (uq) => uq.where("id", authData.sub)),
+									eb.exists("f_users", (uq) => uq.where("id", authData.sub)),
+								),
+							),
+						),
+					),
+				),
 			),
 		);
 
@@ -168,16 +266,31 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
 		organization: {
 			row: {
 				select: [canReadOrganization],
+				delete: [canReadOrganization],
+				insert: [canReadOrganization],
+				update: {
+					preMutation: [canReadOrganization],
+				},
 			},
 		},
 		app_user: {
 			row: {
 				select: [canReadUser],
+				delete: [canReadUser],
+				insert: [canReadUser],
+				update: {
+					preMutation: [canReadUser],
+				},
 			},
 		},
 		user_organization: {
 			row: {
 				select: [canReadUserOrganization],
+				update: {
+					preMutation: [canReadUserOrganization],
+				},
+				delete: [canReadUserOrganization],
+				insert: [canReadUserOrganization],
 			},
 		},
 	};

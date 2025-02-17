@@ -12,70 +12,79 @@ function App() {
 	const [usersOrganizations] = useQuery(z.query.user_organization);
 	const [organizations] = useQuery(z.query.organization);
 
+	const q = (id: string) =>
+		z.query.organization.where((eb) =>
+			eb.or(
+				eb.exists("a_users", (uq) => uq.where("id", id)),
+				eb.exists("b_users", (uq) => uq.where("id", id)),
+				eb.exists("c_users", (uq) => uq.where("id", id)),
+				eb.exists("d_users", (uq) => uq.where("id", id)),
+				eb.exists("e_users", (uq) => uq.where("id", id)),
+				eb.exists("f_users", (uq) => uq.where("id", id)),
+				eb.exists("parent", (oq) =>
+					oq.where((eb) =>
+						eb.or(
+							eb.exists("a_users", (uq) => uq.where("id", id)),
+							eb.exists("b_users", (uq) => uq.where("id", id)),
+							eb.exists("c_users", (uq) => uq.where("id", id)),
+							eb.exists("d_users", (uq) => uq.where("id", id)),
+							eb.exists("e_users", (uq) => uq.where("id", id)),
+							eb.exists("f_users", (uq) => uq.where("id", id)),
+							eb.exists("parent", (oq) =>
+								oq.where((eb) =>
+									eb.or(
+										eb.exists("a_users", (uq) => uq.where("id", id)),
+										eb.exists("b_users", (uq) => uq.where("id", id)),
+										eb.exists("c_users", (uq) => uq.where("id", id)),
+										eb.exists("d_users", (uq) => uq.where("id", id)),
+										eb.exists("e_users", (uq) => uq.where("id", id)),
+										eb.exists("f_users", (uq) => uq.where("id", id)),
+										eb.exists("parent", (oq) =>
+											oq.where((eb) =>
+												eb.or(
+													eb.exists("a_users", (uq) => uq.where("id", id)),
+													eb.exists("b_users", (uq) => uq.where("id", id)),
+													eb.exists("c_users", (uq) => uq.where("id", id)),
+													eb.exists("d_users", (uq) => uq.where("id", id)),
+													eb.exists("e_users", (uq) => uq.where("id", id)),
+													eb.exists("f_users", (uq) => uq.where("id", id)),
+												),
+											),
+										),
+									),
+								),
+							),
+						),
+					),
+				),
+			),
+		);
+
+	const [complexOrganizations1] = useQuery(q("1"));
+	const [complexOrganizations2] = useQuery(q("2"));
+	const [complexOrganizations3] = useQuery(q("3"));
+	const [complexOrganizations4] = useQuery(q("4"));
+	const [complexOrganizations5] = useQuery(q("5"));
+	const [complexOrganizations6] = useQuery(q("6"));
+
 	const [orgId, setOrgId] = useState<string>("org1");
 
 	return (
 		<>
-			<h1>Users</h1>
+			<h1>All Users</h1>
 			<pre>{JSON.stringify(users, null, 2)}</pre>
 
-			<h1>Users Organizations</h1>
-			<pre>{JSON.stringify(usersOrganizations, null, 2)}</pre>
+			<h1>All Organizations</h1>
+			<pre>{JSON.stringify(organizations, null, 2)}</pre>
+
+			<h1>Complex Organizations</h1>
+			<pre>{JSON.stringify(complexOrganizations1, null, 2)}</pre>
 
 			<h1>User</h1>
 			<pre>{JSON.stringify(user, null, 2)}</pre>
 
 			<h1>User Organizations</h1>
 			<pre>{JSON.stringify(userOrganizations, null, 2)}</pre>
-
-			<h1>Organizations</h1>
-			<pre>{JSON.stringify(organizations, null, 2)}</pre>
-
-			<button
-				type="button"
-				onClick={() => {
-					z.mutate.user_organization.delete({
-						user_id: "1",
-						organization_id: "org1",
-					});
-				}}
-			>
-				Delete user organization
-			</button>
-			<input
-				type="text"
-				value={orgId}
-				onChange={(e) => setOrgId(e.target.value)}
-			/>
-
-			<button
-				type="button"
-				onClick={() => {
-					z.mutate.user_organization.upsert({
-						user_id: "1",
-						organization_id: orgId,
-					});
-				}}
-			>
-				Add user organization
-			</button>
-			<button
-				type="button"
-				onClick={async () => {
-					await z.mutate.app_user.upsert({
-						id: "1",
-					});
-					await z.mutate.app_user.upsert({
-						id: "2",
-					});
-					await z.mutate.user_organization.upsert({
-						user_id: "2",
-						organization_id: "org1",
-					});
-				}}
-			>
-				insert users
-			</button>
 		</>
 	);
 }
